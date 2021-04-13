@@ -2,30 +2,62 @@ package com.sudoku;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Solver {
+
     public void solveSudoku(char[][] board, char blank) throws IOException {
         int size = board.length;
-        long a = System.currentTimeMillis();
-        int solutions = numSolutions(board, blank, size);
-        System.out.print("Solving the above board...");
-
         if (sudokuSolver(board, blank, size)) {
-            long b = System.currentTimeMillis();
-            System.out.println("solved.");
-            printBoard(board);
-            System.out.println("Solved the board in " + (b-a) + " milliseconds");
-            System.out.println("There are a total of " + solutions + " solutions");
+
         } else {
-            System.out.println("Count not solve board! Uh-Oh!");
+            sendMessage("Can not solve the board.");
         }
-        System.in.read();
     }
 
+    public char[][] createSudoku(int size, char blank, int numToRemove, int threads) throws IOException {
+        //Create our thread pool
+        ExecutorService executorService = Executors.newFixedThreadPool(threads);
+        MyRunnable[] threadList = new MyRunnable[threads];
+        sendMessage("Spinning up threads 1-" + threads + ". Trying to remove "+ numToRemove + " cells.");
+        for (int i=0; i<threads; i++) {
+            //Pass in the board to each of our threads, letting them work concurrently on a solution
+            MyRunnable worker = new MyRunnable(blank, numToRemove, size);
+            threadList[i] = worker;
+            executorService.execute(worker);
+        }
+        executorService.shutdown();
+        while (!executorService.isTerminated());
+        sendMessage("All threads finished.\n");
+
+        return null;
+    }
+    public void sendMessage(String message) {
+        System.out.println(message);
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .setHeader("msg",message + "</br>")
+                .uri(URI.create("http://localhost:3000/console"))
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .build();
+        try {
+            client.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
     public char[][] createSudoku(char blank, int numToRemove, int size) {
         //First generate a solved solution
         char[][] board = new char[size][size];
@@ -35,44 +67,9 @@ public class Solver {
             }
         }
         sudokuSolver(board, blank, size);
-
-        if (removeCharacter(board, blank, 0, numToRemove, size)) {
-            return board;
-        } else return null;
+        return board;
     }
 
-    private boolean removeCharacter(char[][] board, char blank, int count, int max, int size) {
-        //Try and remove the characters
-        //For each cell in the thing
-        if (count==max) return true;
-        //Create random ordering to all of the columns/rows
-        ArrayList<Integer> rows = new ArrayList<>();
-        ArrayList<Integer> cols = new ArrayList<>();
-        for (int i=0; i<size; i++) {
-            rows.add(i);
-            cols.add(i);
-        }
-        Collections.shuffle(rows);
-        Collections.shuffle(cols);
-
-
-        int r, c;
-        for (int i=0; i<size; i++) {
-            for (int j=0; j<size; j++) {
-                r = rows.get(i);
-                c = cols.get(j);
-                //Only try and remove the cells with numbers in them
-                if (board[r][c]==blank) continue;
-                char ch = board[r][c];
-                board[r][c] = blank;
-                if (numSolutions(board, blank, size)==1 && removeCharacter(board, blank, count+1, max, size)) {
-                    return true;
-                }
-                board[r][c] = ch;
-            }
-        }
-        return false;
-    }
 
     public void printBoard(char[][] board) {
         int size = board.length;
@@ -104,7 +101,10 @@ public class Solver {
                 //Add up all of the solutions that come back from recursive calls
                 solutions += numSolutions(board, blank, size);
                 board[nextSpot[0]][nextSpot[1]] = blank;
-                if (solutions>1) return solutions;
+                if (solutions>1) {
+                    nums = null;
+                    return solutions;
+                }
             }
         }
         return solutions;
@@ -165,3 +165,4 @@ public class Solver {
         return true;
     }
 }
+
