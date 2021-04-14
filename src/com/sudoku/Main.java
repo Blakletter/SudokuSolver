@@ -19,6 +19,7 @@ public class Main {
                 {'.','.','.','.','8','.','.','7','9'}};
 
         Solver s = new Solver();
+
         char[][] finishedBoard = s.createSudoku( 9,'.',num, threads);
         //s.printBoard(finishedBoard);
     }

@@ -38,7 +38,6 @@ public class Solver {
         executorService.shutdown();
         while (!executorService.isTerminated());
         sendMessage("All threads finished.\n");
-
         return null;
     }
     public void sendMessage(String message) {

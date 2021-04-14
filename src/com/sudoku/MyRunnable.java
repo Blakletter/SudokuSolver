@@ -39,6 +39,9 @@ public class MyRunnable implements Runnable {
             sudokuSolver(blank, size);
             tries = 0;
         }
+        sendBoard();
+    }
+    private void sendBoard() {
         String b = "";
         int size = board.length;
         for (int i=0; i<size; i++) {
@@ -51,9 +54,9 @@ public class MyRunnable implements Runnable {
             b+="</br>";
         }
         b+="</br>";
+
         sendMessage(b);
     }
-
     public void sendMessage(String message) {
         System.out.println(message);
         HttpClient client = HttpClient.newHttpClient();
